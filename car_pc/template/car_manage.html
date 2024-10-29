@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>首页二</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="static/layui-v2.8.17/layui/css/layui.css" media="all">
+    <link rel="stylesheet" href="static/layuimini-v2/lib/font-awesome-4.7.0/css/all.min.css" media="all">
+</head>
+<body>
+  <fieldset class="layui-elem-field layui-field-title">
+    <legend>车辆管理</legend>
+  </fieldset>
+  <div class="layui-row" style="padding:10px;">
+    <div class="layui-col-md4">
+      <div class="layui-btn-group" id="device_handle_permi">
+        <button class="layui-btn" onclick="add_data('handle_data_form')">+</button>
+        <button class="layui-btn user-permission"  character="import_terminal" id="import_terminal" data-lang="import">导入</button>
+      </div>
+      <a data-lang="template_download" style="vertical-align:bottom ;margin-left: 50px;text-decoration: underline;" target="_blank" href="/static/device_import_template.xls">模板下载</a>
+    </div>
+    <div class="layui-col-md5">
+      <form class="layui-form layui-form-pane" action="">
+          <div class="layui-form-item">
+              <div class="layui-inline">
+                  <div class="layui-input-inline">
+                      <input type="" name="search_key" placeholder="名称" class="layui-input">
+                  </div>
+              </div>
+              <div class="layui-inline">
+                  <input type="checkbox" name="search_kind" title="精确"  class="layui-input">
+              </div>
+              <div class="layui-inline">
+                  <a class="layui-btn" lay-submit="" lay-filter="data-search-btn">搜索</a>
+              </div>
+          </div>
+      </form>
+    </div>
+    <div class="layui-col-md3">
+
+      <button data-lang="batch_transfer" class="layui-btn user-permission" character="transfer" onClick="handle_bat('transfer')">批量转移</button>
+      <button data-lang="batch_delete" class="layui-btn user-permission layui-btn-danger" character="del_bat" onClick="handle_bat('del_bat')">批量删除</button>
+  <!--     <button class="layui-btn" onClick="handle_bind('approve')">
+        终端授权<span class="layui-badge" style="margin-left: 5px;display: none;" id="bind_remind">9</span>
+      </button>
+      <button class="layui-btn" onClick="handle_bind('show_record')">查看申请</button> -->
+    </div>
+
+  </div>
+  <div style="margin-top:-30px;padding:10px">
+    <table  class="layui-table" id="base_info_manage_table" lay-filter="base_info_manage_table"></table>
+  </div>
+  
+
+<div id="remind_show_panel" style="display:none;padding: 20px;">
+  <button class="layui-btn" onclick="add_data('car_record_form')">+</button>
+  <div><table id="record_table" lay-filter = "record_table"></table></div>
+</div>
+<!-- 添加数据表单开始 -->
+<form  class="layui-form layui-form-pane " action="" id="handle_data_form" lay-filter="handle_data_form" style="padding: 10px;display: none;">
+  <div class="lauyi-row">
+
+    <div class="layui-form-item" style="display: none;">
+      <input type="text" name="status" class="layui-input">
+      <input type="text" name="id" class="layui-input">
+      <input type="text" name="creater" class="layui-input">
+      <input type="text" name="param_set" class="layui-input">
+      <input type="text" name="kind" class="layui-input" >
+      <input type="text" name="picture" >
+      <input type="text" name="alarm_set" >
+      <input type="text" name="apply_id" >
+      <input type="text" name="array_index" >
+      <input type="text" name="detail" >
+      <input type="text" name="auth" >
+    </div>
+
+    <div class="layui-form-item">
+      <label class="layui-form-label layui-bg-green"><i class="layui-icon layui-icon-star-fill" style="color:red;"></i> 车牌</label>
+      <div class="layui-input-inline">
+        <input type="text" name="name" lay-verify="required" lay-reqtext="必填项!" placeholder="必填项" autocomplete="off" class="layui-input">
+      </div>
+
+      <label class="layui-form-label layui-bg-green">归属公司</label>
+      <div class="layui-input-inline">
+        <select name="owner" class="layui-select" type="text" placeholder="所在公司" id="company_select"></select>
+      </div>
+
+    </div>
+
+    <div class="layui-form-item">
+      <label class="layui-form-label layui-bg-green">类别</label>
+      <div class="layui-input-inline">
+        <input type="text" list="car_type_list" name="car_type" placeholder="轿车/货车/电瓶车，自定义" class="layui-input">
+        <datalist id="car_type_list">
+          <option value="轿车">轿车</option>
+          <option value="货车">货车</option>
+          <option value="电瓶车">电瓶车</option>
+          <option value="摩托车">摩托车</option>
+        </datalist>
+      </div>
+
+      <label class="layui-form-label layui-bg-green">车型</label>
+      <div class="layui-input-inline">
+        <input type="text" name="model" placeholder="品牌型号" autocomplete="off" class="layui-input">
+      </div>
+
+      
+    </div>
+
+    <div class="layui-form-item">
+      <label class="layui-form-label layui-bg-green" >定位设备类型</label>
+      <div class="layui-input-inline" >
+        <select name="protocol" id="protocol-select">
+        </select>
+      </div>
+      
+      <label class="layui-form-label layui-bg-green" >定位设备ID</label>
+      <div class="layui-input-inline" >
+        <input type="text" name="device_id" placeholder="输入定位设备ID" class="layui-input">
+      </div>
+    </div>
+    <div class="layui-form-item">
+
+      <label class="layui-form-label layui-bg-green">司机</label>
+      <div class="layui-input-inline">
+        <input type="text" name="driver" autocomplete="off" placeholder="司机" class="layui-input">
+      </div>
+      
+
+      <div class="layui-inline">
+        <label class="layui-form-label layui-bg-green">备注</label>
+        <div class="layui-input-inline">
+          <input type="text" name="remark" placeholder="备注信息" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+    </div>
+
+    <div class="layui-form-item">
+      <div class="layui-inline">
+        <label class="layui-form-label layui-bg-green">显示图标</label>
+        <div class="layui-input-block">
+          <input type="radio" name="icon"   value="static/show_icon/default.png" class="layui-input" >
+          <img src="/static/show_icon/default.png" style="width: 40px;height: 40px">
+
+          <input type="radio" name="icon"   value="static/show_icon/car.png" class="layui-input" checked="">
+          <img src="/static/show_icon/car.png" style="width: 40px;height: 40px" >
+        
+          <input type="radio" name="icon"   value="static/show_icon/yellow_car.png" class="layui-input">
+          <img src="/static/show_icon/yellow_car.png" style="width: 40px;height: 40px">
+        </div>
+        <div class="layui-input-block">
+          <input type="radio" name="icon"   value="static/show_icon/taxi.png" class="layui-input">
+          <img src="/static/show_icon/taxi.png" style="width: 40px;height: 40px">
+        
+          <input type="radio" name="icon"   value="static/show_icon/truck.png" class="layui-input">
+          <img src="/static/show_icon/truck.png" style="width: 40px;height: 40px">
+
+          <input type="radio" name="icon"   value="static/show_icon/motorbike.png" class="layui-input">
+          <img src="/static/show_icon/motorbike.png" style="width: 40px;height: 40px">
+        </div>
+      </div>
+    </div>
+
+
+    <div class="layui-form-item">
+      <a class="layui-btn" id="picture_upload">添加图片+</a>
+    </div>
+    <div class="layui-form-item" id="picture_show_panel" style="display:flex;"></div>
+
+  </div>
+
+</form>
+
+<!-- 添加数据表单结束 -->
+
+
+<!-- 设备导入 -->
+<div class="layui-form-item" style="display: none;padding: 20px;" id="import_terminal_panel">
+  选择定位器通讯协议:<select class="layui-select" id="import_terminal_protocol" style="width:30%;margin-left: 10px;"></select>
+  <table class="layui-table" id="import_terminal_table" lay-filter="import_terminal_table"></table>
+</div>
+
+<!--表格操作  -->
+<script type="text/html" id="table_info_handle_bar">
+    <a class="layui-btn layui-btn-xs data-count-edit" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger data-count-edit" lay-event="del">删除</a>
+    <!-- <a class="layui-btn layui-btn-xs layui-btn-danger data-count-delete" lay-event="delete">启/停</a> -->
+</script>
+
+<!-- 设备转移 -->
+<div id="transfer-panel" style="padding:20px;display:none;">
+  <div class="layui-col-md6">
+    <table class="layui-table" id="terminal-table" lay-filter="terminal-table"></table>
+  </div>
+  <div class="layui-col-md6">
+    <table class="layui-table" id="company-table" lay-filter="company-table"></table>
+  </div>
+</div>
+
+
+<script src="static/layui-v2.8.17/layui/layui.js" charset="utf-8"></script>
+<script type="text/javascript" src="/static/js/base.js"></script>
+<!-- 引入把上传的表格转变为json的插件 -->
+<script src="/static/js/xlsx.js"></script>
+<!-- js代码开始 -->
+
+<script type="text/javascript">
+var $=layui.jquery;
+var element = layui.element;
+var tree=layui.tree;
+var table=layui.table;
+var layer=layui.layer;
+var form=layui.form;
+var upload=layui.upload;
+var laydate=layui.laydate;
+var slider=layui.slider;
+var transfer=layui.transfer;
+
+var token = parent.token
+
+
+// 获取屏幕高度和宽度
+var get_height=$(window).height()
+var get_width=$(window).width()
+
+var ajax_url='car_manage'
+
+// 首次用户数据加载
+var car;
+var company = []
+var department = []
+var user = []
+var protocol;
+var init_func=function(d){
+  console.log("car_manage",d)
+  car=d.car
+  company = d.company_select
+  user = d.user_select
+  protocol = d.protocol
+  search_data = car
+  
+  table_show(car)
+  fill_option(company,"company_select",false,"id","name")
+  protocol.forEach(item=>{
+    let opt = `<option value=`+item+`>`+item+`</option>`
+    $("#protocol-select").append(opt)
+    $("#import_terminal_protocol").append(opt)
+  })
+
+}
+// 首次用户数据加载
+$(function(){
+  let body_font_size = parent.get_size_func("height",15)
+  $("body").css("font-size",body_font_size.toFixed()+"px")
+  ajax_get_func(ajax_url,token,'get_init_data',init_func)
+})
+
+// 设备数据表格渲染函数
+var table_show=function(table_data){
+  // console.log(table_data)
+
+  table.render({
+    elem: '#base_info_manage_table',
+    toolbar:'#table_header',
+    data: table_data,
+    size:"sm",
+    height:"full-150",
+    id:'base_info_manage_table',
+    cols: [[
+        {type: "checkbox", fixed: "left"},
+        {field: 'idx', fixed: "left", title: '序号',width:20,sort:true, fixed: "left",templet:function(d){
+          return d.LAY_INDEX +1
+        }},
+        {field: 'name',width:"8%", title: '车牌',sort:true},
+        {field: 'car_type',width:"6%", title: '类别',sort:true},
+        {field: 'model',width:"6%", title: '车型',sort:true},
+        {field: 'status',width:"6%", title: '状态',sort:true,templet:function(d){
+          var status_map = {"":"空闲","apply":"已申请,未领用","get_key":"使用中"}
+          return status_map[d.status]
+        }},
+        {field: 'driver',width:"6%", title: '司机'},
+        {field: 'device_id',width:"8%", title: '定位设备ID',sort:true},
+        {field: 'protocol',width:"8%", title: '定位设备类型',sort:true},
+        {field: 'car_detail',width:"8%", title: '照片',sort:true,templet:function(row){
+          if(row.picture == ""){
+            return ""
+          }
+          var pp=""
+          var p_arr = row.picture.split(",")
+          p_arr.forEach(k=>{
+            var src = `/static/data_from_web/car/`+k
+            var htm = `<img src=`+src+` style="width:auto;height:120px" >`
+            pp+=htm
+            
+          })
+          return pp
+        }},
+
+        {field: 'owner',title: '所属单位',templet:function(d){
+            var info = ""
+            info = get_detail_from_key(company,d.owner,"id")
+            if(!info){
+              info = {"name":d.owner}
+            }
+            return info.name
+          }},
+          {field: 'creater',title: '创建人',templet:function(d){
+            var info = ""
+            info = get_detail_from_key(user,d.creater,"id")
+            if(!info){
+              info = {"name":d.creater}
+            }
+            return info.name
+          }},
+          {field: 'remark',title: '备注'},
+          {field: 'created_at', width:"6%", title: '创建时间',templet:function(d){
+            return d.created_at.split("T")[0]
+          }},
+        {title: '操作', width:"8%",templet: '#table_info_handle_bar', fixed: "right", align: "center"}
+    ]],
+    limits: [30,10, 15, 20, 25, 50, 100],
+    limit: 30,
+    page: true
+  });
+}
+
+var add_data = function(dom){
+
+  document.getElementById(dom).reset();
+  $('#picture_show_panel').empty()
+  show_modal(dom,"add","新增信息")
+  form.render();
+}
+        
+var show_modal = function(dom,k,title){
+
+  layer.open({
+      type: 1
+      ,title:title
+      ,area:["40%","70%"]
+      ,id:dom+'_show_id' //防止重复弹出
+      ,content:$("#"+dom)
+      ,shade: 0 //不显示遮罩
+      ,btn:["提交"]
+      ,btnAlign:"c"
+      ,btn1:function(i){
+        if(form.validate($("#"+dom))){
+          var v = form.val(dom)
+          submit_func(v,k)
+        }
+      }
+    });
+}
+
+// 监听添加操作,并提交
+var submit_func = function(base_info,k,f){
+  if(f == null){
+    base_info=package_data(base_info)
+  }
+  // console.log(base_info)
+  var title = {"add":"新增","edit":"修改","del":"删除"}
+  layer.confirm("确定要"+title[k]+base_info.name+"?",function(index){
+    ajax_post_func(ajax_url,token,'curd&action='+k,JSON.stringify(base_info),function(d){
+                  location.reload()
+                })
+  })
+  return false
+}
+
+
+// 监听添加操作,并提交
+var submit_func_stand = function(opt){
+  // let prop = {ajax_url:"",data:"",token:"",what:"",action:"",bat:true,package_func:"",confirm:"",handle_func:""}
+  if(!opt.ajax_url || opt.ajax_url == "" || !opt.what|| opt.what == "" || !opt.token || opt.token == "" || !opt.data || opt.data == ""){
+    return
+  }
+  if(opt.package_func){
+    base_info=opt.package_func(base_info)
+  }
+
+  if(!opt.handle_func){
+    opt.handle_func = function(){
+      location.reload()
+    }
+  }
+
+  var title_map = {"add":"新增","edit":"修改","del":"删除","transfer":"转移"}
+  var obj_map = {"car_manage":"车辆","company":"公司","user_manage":"用户","alarm_set":"报警设置"}
+  var obj_map1 = {"car_manage":"台","company":"个","user_manage":"个","alarm_set":"条"}
+  var name_map = {"car_manage":"name","company":"name","user_manage":"name","alarm_set":"name"}
+  
+  if (opt.confirm){
+
+    let title = "确定要"+title_map[opt.action]+opt.data[name_map[opt.ajax_url]]+"?"
+    if (opt.bat){
+       title = "确定要批量"+title_map[opt.action]+opt.data.length+obj_map1[opt.ajax_url]+obj_map[opt.ajax_url]+"?"
+    }
+    layer.confirm(title,function(index){
+      ajax_post_func(opt.ajax_url,opt.token,opt.what+'&action='+opt.action,JSON.stringify(opt.data),opt.handle_func)
+    })
+  }else{
+      ajax_post_func(opt.ajax_url,opt.token,opt.what+'&action='+opt.action,JSON.stringify(opt.data),opt.handle_func)
+  }
+  
+  return false
+}
+
+// 监听操作按钮，编辑/启停
+table.on('tool(base_info_manage_table)', function (obj) {
+  
+  var result = obj.data;
+  console.log(result,obj.event)
+  if(obj.event=='edit'){
+    show_picture(result.picture,result.id.toString())
+    document.getElementById("handle_data_form").reset();
+    form.val('handle_data_form',result)
+    show_modal("handle_data_form","edit","修改车辆信息")
+    form.render();
+    
+  }else if(obj.event=='del'){
+    layer.confirm("确定删除车辆："+result.name+"？",
+              {btn: ['是', '否']}, 
+              function (index) {
+                ajax_post_func(ajax_url,token,'curd&action=del',JSON.stringify(result),function(){
+                  location.reload()
+                })
+              }
+              ,function(){
+                console.log('no')
+                layer.closeAll()
+              });
+  }
+});
+
+//封装数据
+var package_data=function(base_data){
+  base_data.id = isNaN(parseInt(base_data.id)) ? 0:parseInt(base_data.id)
+  return base_data
+}
+
+// 搜索
+var form_info = form.val("handle_data_form")
+var search_field = []
+var search_data = []
+for(var k in form_info){
+  if(k !== "id"){
+    search_field.push(k)
+  }
+}
+
+form.on('submit(data-search-btn)', function (data) {
+
+    var search_key = data.field['search_key'];
+    var search_kind = data.field['search_kind'];
+
+    if(search_key==''){
+      table_show(search_data)
+      return
+    }
+    var search_result=search_func(search_data,search_key,search_kind,search_field)
+    table_show(search_result)
+
+    return false;
+});
+
+
+upload.render({
+  elem: "#picture_upload"
+  ,auto: false
+  ,choose: function(obj){
+    obj.preview(function(index, file, result){
+      // result是图片 base64编码
+      if (result.length>8000000){
+        layer.msg("图片不能超过5MB")
+        return false
+      }else{
+        console.log(file.name)
+        
+        var v = form.val("handle_data_form")
+        
+        if(v.name == ""){
+          layer.msg("先录入c车牌，再添加图片")
+          return false
+        }
+
+        var filename = v.name+"]["+file.name
+
+        var base_info = {'db_id':v.id,"filename":filename,"picture":result}
+        
+        ajax_post_func(ajax_url,token,'handle_picture&action=add',JSON.stringify(base_info),function(d){
+          layer.msg(file.name+",添加成功")
+          console.log("base_info",d)
+          var p,db_id;
+
+          if(d.id != 0){
+            p = d.picture
+            db_id = d.id.toString()
+            car.forEach((item,i)=>{
+              if(item.id == d.id){
+                car[i] = d
+              }
+            })
+            table_show(car)
+          }else{
+            var v = form.val("handle_data_form")
+            db_id = v.id
+            p = v.picture
+            if(p == ""){
+              p = d.picture
+            }else{
+              p +=","+d.picture
+            }
+          }
+          form.val("handle_data_form",{"picture":p})
+          show_picture(p,db_id)
+          
+        })
+
+      }
+      
+    });
+  }
+});
+
+
+var show_picture = function(p,db_id){
+
+  $('#picture_show_panel').empty()
+  if (p == ""){
+    return
+  }
+  var p_arr = p.split(",")
+  p_arr.forEach(k=>{
+
+    var src = `/static/data_from_web/car/`+k
+    var htm = `<div style="width:100px;height:100px;border: 1px solid lightgray;margin:5px;display:flex;flex-direction:column;">
+                <div>
+                  <i class="layui-icon layui-icon-error" style="float:right;color:red" onclick="remove_picture('`+k+`','`+db_id+`')"></i>
+                </div>
+                <div style="text-align:center;overflow:hidden">
+                  <img src=`+src+` style="width:auto;height:80px" onclick="show_big_picture('`+src+`')">
+                </div>
+              </div>`
+    $('#picture_show_panel').append(htm)
+    
+  })
+}
+
+var show_big_picture = function(src){
+  layer.open({
+    type: 1
+    ,title:"图片"
+    ,area:["80%","80%"]
+    ,id:"big_picture"
+    ,content:`<div style="text-align:center;padding:10px;overflow:auto"><img src=`+src+`></div>`
+    ,shade: 0.2 //不显示遮罩
+  });
+}
+
+var remove_picture = function(filename,db_id){
+  var base_info = {'db_id':db_id,"filename":filename}
+  console.log(base_info)
+  layer.confirm("确定要删除图片"+filename,function(i){
+
+    ajax_post_func(ajax_url,token,'handle_picture&action=del',JSON.stringify(base_info),function(d){
+      layer.msg(filename+"删除成功")
+      console.log("remove",d)
+      var p,db_id
+      if(d.id != 0){
+        p = d.picture
+        db_id = d.id.toString()
+        car.forEach((item,i)=>{
+          if(item.id == d.id){
+            car[i].picture = d.picture
+          }
+        })
+        table_show(car)
+      }else{
+        var v = form.val("handle_data_form")
+        p = v.picture
+        db_id = v.id
+        var p_arr = p.split(",")
+        var np = ""
+        p_arr.forEach(pv=>{
+          if(pv != filename){
+            if(np == ""){
+              np = pv
+            }else{
+              np +=","+pv
+            }
+          }
+        })
+
+        p = np
+      }
+
+      form.val("handle_data_form",{"picture":p})
+      show_picture(p,db_id)
+
+    })
+  })
+  
+}
+
+  let terminal_field = {
+    "车牌":"name",
+    "定位设备ID":"device_id" ,
+  }
+  
+  // 监听 导入 按钮
+  $('#import_terminal').click(function(){
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.addEventListener('change', function() {
+      var file = this.files[0];
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var data = e.currentTarget.result;
+        var wb = XLSX.read(data,{type:'binary',raw:true})
+        var j_data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])
+        console.log(j_data)
+        if(j_data[0]['__EMPTY']!=null){
+          layer.msg('表格出错')
+          return false
+        }
+        let info = []
+        let devidarry = []
+        let repeat = []
+        j_data.forEach(j=>{
+          let d = {icon:"static/show_icon/default.png"}
+          let add = true
+          if(devidarry.indexOf(j["定位设备ID"])!=-1){
+            add = false
+            repeat.push(j["定位设备ID"])
+          }else{
+            for(var k in j){
+              if(terminal_field[k]){
+
+                d[terminal_field[k]] = j[k].toString()
+                if(k == "车牌" && j[k] == ""){
+                  d[terminal_field[k]] = j["定位设备ID"]
+                }
+                devidarry.push(j["定位设备ID"])
+              }
+            }
+          }
+          
+          if(add){
+            info.push(d)
+          }
+        })
+        
+        console.log("info",info)
+
+        layer.open({
+          type: 1
+          ,title:"导入"
+          ,area:['40%',"80%"]
+          ,id:'import_terminal_panel_id' //防止重复弹出
+          ,content:$("#import_terminal_panel")
+          ,shade: 0 //不显示遮罩
+          ,btn:["提交"]
+          ,btnAlign:"c"
+          ,success:function(){
+            import_table_show(info)
+            if(repeat.length>0){
+              repeat = repeat.join(",")
+              layer.msg("重复:"+repeat)
+            }
+          }
+          ,btn1:function(i){
+            let confirm_options={title:"导入车辆信息"+info.length,btn:["确定","取消"]}
+            let protocol = $("#import_terminal_protocol").val()
+            info.forEach((item,i)=>{
+              info[i].protocol = protocol
+            })
+            console.log("import_car",info)
+            layer.confirm("",confirm_options,function(index){
+              let loadtag = layer.load()
+              ajax_post_func(ajax_url,token,'handle_bat&action=import_car',JSON.stringify(info),function(d){
+                            layer.close(loadtag)
+                            if(d.length>0){
+                              var show = d.join(",")
+                              alert("终端号重复"+show)
+
+                            }
+                            location.reload()
+                            
+                          })
+            })
+          }
+        });
+      }
+      reader.readAsBinaryString(file)
+    })
+
+    input.click();
+
+  })
+
+  var import_table_show=function(table_data){
+    table.render({
+      elem: '#import_terminal_table',
+      data: table_data,
+      size:"sm",
+      height:parseInt(get_height/1.9),
+      id:'import_terminal_table_id',
+      cols: [[
+          {field: 'LAY_NUM', fixed: "left", title:  "index",width:20,sort:true, fixed: "left"},
+          {field: 'name', title: "车牌"},
+          {field: 'device_id' ,title: "定位器ID"},
+
+      ]],
+      limits: [10, 15, 20, 25, 50, 100],
+      limit: 20,
+      page: true
+    });
+  }
+
+
+  let handle_bat = function(k){
+
+    let ter = table.checkStatus("base_info_manage_table").data
+    if(ter.length==0){
+      layer.msg("请选择车辆")
+      return
+    }
+
+    switch(k){
+    case"transfer":
+      handle_transfer(ter)
+      break
+    case"del_bat":
+      let submit_opt = {ajax_url:ajax_url,token:parent.token,data:ter,what:"handle_bat",action:"del",bat:true,confirm:true}
+      submit_func_stand(submit_opt)
+      // submit_func(ter,"handle_bat","del_bat")
+      break
+    }
+  }
+
+  var handle_transfer = function(ter){
+    
+    layer.open({
+      type: 1
+      ,title:"批量转移"
+      ,area:["70%","90%"]
+      ,id:'transfer-panel_id' //防止重复弹出
+      ,content:$("#transfer-panel")
+      ,shade: 0 //不显示遮罩
+      ,success:function(i){
+        transfer_table_show(ter,"terminal-table")
+        company_table_show(company,"company-table")
+        // $("#"+dom+"_submit_"+k).click()
+      }
+      ,btn:["提交"]
+      ,btnAlign:"c"
+      ,btn1:function(index){
+        let target = table.checkStatus("company-table").data
+        if(target.length==0){
+          layer.msg("请选择车辆")
+          return
+        }
+        ter.forEach((t,i)=>{
+          ter[i].owner = target[0].id.toString()
+        })
+        console.log("target",target,ter)
+        // submit_func(ter,"handle_bat","transfer")
+        let submit_opt = {ajax_url:ajax_url,token:parent.token,data:ter,what:"handle_bat",action:"transfer",bat:true,confirm:true}
+        submit_func_stand(submit_opt)
+      }
+
+    });
+  }
+
+  var transfer_table_show=function(table_data,dom){
+    // console.log(table_data)
+    
+    table.render({
+      elem: '#'+dom,
+      data: table_data,
+      size:"sm",
+      height:"full-220",
+      id:dom,
+      cols: [[
+
+          {field: 'LAY_NUM', fixed: "left", title:"index",width:20,sort:true, fixed: "left"},
+          {field: 'name', title: "车牌",sort:true},
+          {field: 'device_id' ,title: "设备ID",sort:true},
+          {field: 'owner',title: "公司",templet:function(d){
+            var name = ""
+            var info = get_detail_from_key(company,d.owner,"id")
+            if(info){
+              name = info.name
+            }
+            return name
+          }},
+      ]],
+      limits: [10, 15, 20, 25, 50, 100],
+      limit: 20,
+      page: true
+    });
+  }
+
+  var company_table_show=function(table_data,dom){
+    // console.log(table_data)
+    
+    table.render({
+      elem: '#'+dom,
+      data: table_data,
+      size:"sm",
+      height:"full-220",
+      id:dom,
+      cols: [[
+          {type: "radio",title:"选择", fixed: "left",LAY_CHECKED:true},
+          {field: 'LAY_NUM', fixed: "left", title: "index",width:20,sort:true, fixed: "left"},
+          {field: 'name',title: "公司"},
+      ]],
+      limits: [10, 15, 20, 25, 50, 100],
+      limit: 20,
+      page: true
+    });
+  }
+
+
+</script>
+</body>
+</html>

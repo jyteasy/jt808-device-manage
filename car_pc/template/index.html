@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>车辆北斗/GPS定位监控系统</title>
+    <meta name="renderer" content="webkit">
+    <!-- <meta http-equiv="Access-Control-Allow-Origin" content="*"> -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="static/layui-v2.9.18/layui/css/layui.css" media="all">
+</head>
+
+<style>
+    
+    .bordre-style{
+        border-radius: 5px;
+        box-shadow: 1px 1px 1px 1px gray;
+
+    }
+    .trail-item:hover{
+        background-color: lightblue;
+        cursor: pointer;
+    }
+
+</style>
+
+<body>
+
+    <div style="display:flex;flex-direction: column;" id="index-main">
+        <div style="display:flex;" id="index-head">
+            <div style="width: 100%;">
+                <ul class="layui-nav" >
+                    <li class="layui-nav-item" style="display:flex;align-items: center;">
+                        <img id="img-logo" src="/static/img/default.png" style="height: 40px;" />
+                        <span id="system-name" style="font-size:18px;font-weight: bold;">简易通车辆定位监控系统(开源)</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div id="index-body" style="border: none;display: flex;" data-show="dynamic">
+            <div id="device-panel" style="width:20%;margin: 5px;padding: 5px;" class="bordre-style">
+                
+                <div style="display: flex;">
+                    <input id="s_time"  type="text" name="s_time" lay-verify="required"  placeholder="开始时间" autocomplete="off" class="layui-input">
+                    <input id="e_time" type="text" name="e_time" lay-verify="required"  placeholder="结束时间" autocomplete="off" class="layui-input">
+                </div>
+                <div style="display: flex;margin-top: 5px;justify-content: space-between;">
+                    <button style="width:50%" class="layui-btn layui-bg-blue layui-btn-sm" onclick="trail_query()">查询轨迹</button>
+                    <button style="width:17%" class="layui-btn layui-btn-danger layui-btn-sm" onclick="trail_clear()">清理轨迹</button>
+                    <button id="run" style="width:11%" class="layui-btn layui-btn-sm">▶</button>
+                    <button id="stop" style="width:11%" class="layui-btn layui-btn-sm">⏹</button>
+                    <button id="pause" style="width:11%" class="layui-btn layui-btn-sm">⏸</button>
+                </div>
+                <form class="layui-form layui-form-pane " action="" id="trail_query_form" lay-filter="trail_query_form">
+                  <div class="layui-form-item">
+                    
+                    <div class="layui-input-inline" >
+                      
+                    </div>
+                  
+                    <div class="layui-input-inline" >
+                      
+                    </div>
+                  </div>
+                </form>
+                <form class="layui-form" style="margin-top:5px">
+                    <div class="layui-form-item">
+                        <div class="layui-inline">
+                            <input type="text" name="name" placeholder="自定义名称"  class="layui-input">
+                        </div>
+                        <div class="layui-inline layui-btn-group">
+                            <a class="layui-btn" onclick="search_func('search')">搜索</a>
+                            <a class="layui-btn " onclick="add_device()">设备+</a>
+                        </div>
+                     </div>
+                </form>
+                <table class="layui-table" id="device-table" lay-filter="device-table" style="margin-top:-20px"></table>
+            </div>
+            <div id="right-panel" style="display:flex;flex-direction: column;width: 80%;margin: 5px;">
+                <div class="bordre-style" id="map-box" style="height:100%;width:100%"></div>
+                <div class="bordre-style" id="track-panel" style="height:25%;overflow: auto;"></div>
+            </div>
+        </div>
+    </div>
+
+    <form class="layui-form" style="display: none;padding: 10px;" id="device-form" lay-filter="device-form">
+        <div class="layui-form-item">
+            <div class="layui-inline">
+               <input type="text" lay-verify="required" name="device_id" placeholder="唯一设备号" class="layui-input">
+            </div>
+            <div class="layui-inline">
+                <input type="text" name="name" placeholder="自定义名称"  class="layui-input">
+            </div>
+            添加自定义参数
+            <a class="layui-btn" onclick="add_param_html()" >+</a>
+            <div id="device-param">
+                
+            </div>
+         </div>
+    </form>
+
+    <!--表格操作  -->
+    <script type="text/html" id="table_info_handle_bar">
+        <a class="layui-btn layui-btn-xs data-count-edit" lay-event="edit"><i class="layui-icon layui-icon-edit"></i></a>
+        <a class="layui-btn layui-btn-xs layui-btn-danger data-count-edit" lay-event="del"><i class="layui-icon layui-icon-delete"></i></a>
+    </script>
+
+
+    <script src="static/layui-v2.9.18/layui/layui.js" charset="utf-8"></script>
+    <script type="text/javascript" src="/static/js/base.js"></script>
+    <script type="text/javascript" src="/static/js/bd_mapgl.js"></script>
+
+
+    <script type="text/javascript">
+        let $ = layui.$
+        let layer = layui.layer
+        let form = layui.form
+        let table = layui.table
+        let window_height = $(window).height()
+        let body_height = window_height-60+"px"
+        $("#index-body").css("height",body_height)
+
+        var device_api = {{.device_api}}
+        var map_key = {{.map_key}}
+        console.log("device_api,map_key",device_api,map_key)
+
+        var map 
+        importBaiDuMapApi(map_key,"show_bdmap")
+        var show_bdmap = function(){
+            map = create_map_ins("map-box") 
+            map_script = document.createElement("script")
+            map_script.type="text/javascript" 
+            map_script.src="/static/js/lushu.js"
+            $("body").append(map_script)
+        }
+
+        $(function(){
+            ajax_get_func(device_api+"/device_get","get",function(d){
+                console.log(d)
+                if(!d){
+                    d = []
+                }
+                table_show(d)
+            })
+        })
+        
+        // 设备数据表格渲染函数
+        var table_show=function(table_data){
+          table.render({
+            elem: '#device-table',
+            data: table_data,
+            size:"sm",
+            height:"full-200",
+            id:'device-table-id',
+            cols: [[
+                {type: "checkbox"},
+                {field: 'name',title: '名称',templet:function(d){
+                    let res = d.data.name == "" || null?d.data.device_id:d.data.name
+                    return res
+                }},
+                {field: 'device_id', title: '设备ID',templet:function(d){
+                    let res = d.data.device_id
+                    return res
+                }},
+                {title: '操作',templet: '#table_info_handle_bar', fixed: "right", align: "center"}
+            ]],
+            limit: 99999,
+            page: false
+          });
+        }
+
+        var table_refresh = function(k,new_data,old){
+            // console.log("table_refresh",k,new_data)
+            let data = table.cache['device-table-id']
+            switch(k){
+            case"add":
+                data.push(new_data)
+                break
+            case"update":
+
+                data.forEach((item,i)=>{
+                    if (item.name == old){
+                        data[i].name = new_data.name
+                        data[i].data = new_data.data
+                        data[i].dynamic = new_data.dynamic
+                    }
+                })
+                break
+            case"del":
+                let idx;
+                for(var i=0;i<data.length;i++){
+                    if (data[i].name == new_data.name){
+                        idx = i
+                    }
+                }
+                if (idx){
+                    data.splice(idx,1)
+                }
+                break
+            }
+
+            table.renderData("device-table-id")
+
+        }
+
+        table.on("tool(device-table)",function(d){
+            let v = copy_func(d.data) 
+            let e = d.event
+            console.log("event,data",e,v)
+            switch(e){
+
+            case"edit":
+                edit_device(v.data)
+                break
+            case"del":
+                layer.confirm("删除"+v.name+"?",function(){
+                    ajax_post_func(device_api+"/device_post",e,JSON.stringify(v.data),function(res){
+                        table_refresh("del",v)
+                    })
+                })
+               
+                break
+            }
+
+        })
+        
+        var current_device
+        table.on("checkbox(device-table)",function(d){
+            let v = d.data
+            let check = d.checked
+            console.log("checkbox device-table",v,d,check)
+            if (check){
+                if(v.dynamic.lng){
+                    add_marker_bdmap(map,v.dynamic)
+                }
+                current_device = v.name
+            }else{
+                remove_marker_bdmap(map,v.dynamic.device_id)
+                current_device = null
+            }
+            
+        })
+
+        var add_device = function(){
+            show_modal("device-form","add")
+        }
+
+        var edit_device = function(edit_data){
+            let base_data = {device_id:edit_data.device_id,name:edit_data.name}
+            form.val("device-form",base_data)
+            delete edit_data.device_id
+            delete edit_data.name
+            $("#device-param").empty()
+            for (var k in edit_data){
+                add_param_html(k,edit_data[k])
+            }
+            show_modal("device-form","update")
+        }
+
+        var show_modal = function(dom,kind){
+            var device_id_old
+            if (kind == "update"){
+                // 修改数据用旧id作为索引
+                device_id_old = form.val("device-form").device_id
+            }
+            layer.open({
+                type: 1
+                ,title:"device"
+                ,id:dom+'_show_id' //防止重复弹出
+                ,content:$("#"+dom)
+                ,shade: 0 //不显示遮罩
+                ,btn:["提交","清空"]
+                ,btnAlign:"c"
+                ,btn1:function(modal_index){
+                    if(form.validate($("#"+dom))){
+                        var v = form.val("device-form")
+                        var d = {device_id:v.device_id,name:v.name}
+                        for(var k in v){
+                            if (k.indexOf("field[")!=-1 && k.indexOf("]value") ==-1){
+                                d[v[k]] = v[k+"]value"]
+                            }
+                        }
+                        // 修改数据用旧id作为索引
+                        if (device_id_old){
+                            d.device_id_old = device_id_old
+                        }
+                        console.log("d,v",d,v)
+                        ajax_post_func(device_api+"/device_post",kind,JSON.stringify(d),function(res){
+                            console.log("kind,res",kind,res)
+                            table_refresh(kind,res,device_id_old)
+                            layer.close(modal_index)
+                        })
+                    }
+                }
+                ,btn2:function(i){
+                    document.getElementById("device-form").reset()
+                    $("#device-param").empty()
+                }
+            });
+        }
+
+        var add_param_html = function(pn,pv){
+            let timecount = Date.now().toString()
+            let param_dom_id = "param"+ timecount
+            let param_name_id = "field["+ timecount
+            let param_value_id = param_name_id+"]value"
+            let param_name = pn == null?"":pn
+            let param_value = pv == null?"":pv
+
+            let htm = `<div class="layui-form-item" id=`+param_dom_id+`>
+                        <div class="layui-inline">
+                           <input type="text" name=`+param_name_id+` value="`+param_name+`" placeholder="参数名称" class="layui-input">
+                        </div>
+                        <div class="layui-inline">
+                            <input type="text" name=`+param_value_id+` value="`+param_value+`" placeholder="参数值"  class="layui-input">
+                        </div>
+                        <a class="layui-btn" onclick=remove_param_html('`+param_dom_id+`')>-</a>
+
+                     </div>`
+            $("#device-param").append(htm)
+        }
+
+        var remove_param_html = function(d){
+            $("#"+d).remove()
+        }
+
+        var trail_clear = function(){
+            map.clearOverlays()
+            trail_marker_on_map = {}
+            $("#track-panel").empty()
+
+        }
+        // 轨迹查询
+        var trail_query = function(){
+            let stime = $("#s_time").val()
+            let etime = $("#e_time").val()
+            if (stime == "" || etime == ""){
+                layer.msg("请选择时间")
+                return
+            }
+            if (!current_device){
+                layer.msg("请在设备列表选择需要查询的设备")
+                return
+            }
+            let d = {s_time:stime,e_time:etime,device_id:current_device}
+            console.log("trail_query",d)
+            ajax_post_func(device_api+"/trail","query_trail",JSON.stringify(d),function(res){
+                console.log("kind,res",res)
+                handle_trail(res)
+            })
+        }
+
+
+        var lushu;
+        var handle_trail = function(obj){
+
+            let data = []
+            obj.forEach(item=>{
+                data.push(item.data)
+            })
+            if (data.length < 1 ){
+                layer.msg("没有数据")
+                return
+            }
+            // 清理底部追踪面板
+            $("#track-panel").empty()
+            data.forEach((item,i)=>{
+                createrTrackingHtml(map,item,i)
+            })
+            let arrPois = package_trail_point(data)
+            draw_line_bdmap(map,arrPois)
+            lushu = new BMapGLLib.LuShu(map, arrPois, {
+                        defaultContent: obj[0].data.device_id, // "信息窗口文案"
+                        autoView: true, // 是否开启自动视野调整，如果开启那么路书在运动过程中会根据视野自动调整
+                        speed: 500,
+                        // icon: new BMapGL.Icon('./images/car.png', new BMapGL.Size(32, 32), { anchor: new BMapGL.Size(10, 10) }),
+                        icon: new BMapGL.Icon("/static/img/trail.png", new BMapGL.Size(48, 48), { anchor: new BMapGL.Size(24, 24) }),
+                        enableRotation: true, // 是否设置marker随着道路的走向进行旋转
+                    });
+        }
+        
+        //绑定事件
+        $("#run").on("click", function () {
+            //开始
+            lushu.start();
+        })
+        $("#stop").on("click", function () {
+            //停止
+            lushu.stop();
+        })
+        $("#pause").on("click", function () {
+            //暂停
+            lushu.pause();
+        })
+
+        var laydate = layui.laydate
+        laydate.render({
+          elem: '#s_time'
+          ,type: 'datetime'
+          ,value:new Date(new Date(new Date().toLocaleDateString()).getTime())
+          ,btns: ['clear','now', 'confirm']
+        });
+
+        laydate.render({
+          elem: '#e_time'
+          ,type: 'datetime'
+          ,value:new Date()
+          ,btns: ['clear','now', 'confirm']
+        });
+
+
+
+    </script>
+
+</body>
+</html>

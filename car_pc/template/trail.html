@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>轨迹回放</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="static/layui-v2.8.17/layui/css/layui.css" media="all">
+    <link rel="stylesheet" href="static/layuimini-v2/lib/font-awesome-4.7.0/css/all.min.css" media="all">
+</head>
+<style type="text/css">
+  .hover-gray:hover{
+    background-color: lightblue;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+  .left-panel{
+    width: 25%;
+    display:flex;
+    flex-direction:column;
+    border:1px solid lightgray;
+    border-radius:5px;
+    overflow:auto;
+    padding:5px;
+    box-shadow: 1px 1px 1px 1px gray;
+
+  }
+  .right-panel{
+    width: 75%;
+    display:flex;
+    flex-direction:column;
+    border:1px solid lightgray;
+    box-shadow: 1px 1px 1px 1px gray;
+    border-radius:5px;
+    overflow:auto;
+    padding:5px;
+
+  }
+
+  #map_box{
+    width: 100%;
+    height: 70%;
+    box-shadow: 1px 1px 1px 1px gray;
+    border-radius: 5px;
+
+  }
+
+  #trail_detail_panel{
+    width: 100%;
+    height: 30%;
+    box-shadow: 1px 1px 1px 1px gray;
+    border-radius: 5px;
+
+  }
+  .trail-play-panel{
+    width: 74%;
+    height: 5%;
+    display: flex;
+    position: absolute;
+    bottom: 31%;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.1);
+    align-items: center;
+    border-radius: 5px;
+    padding: 1px;
+    text-align: center;
+    z-index: 99;
+
+  }
+
+
+
+
+</style>
+<body>
+  <div style="display: flex;">
+    <div class="left-panel">
+      <!-- 轨迹查询面板 -->
+      <div id="trail_query_panel" >
+        <form class="layui-form layui-form-pane " action="" id="trail_query_form" lay-filter="trail_query_form">
+          <div class="layui-form-item">
+            <label class="layui-form-label layui-bg-green">选择车辆</label>
+            <div class="layui-input-inline" style="width:46%" id="car-select-list">
+
+            </div>
+
+            <div class="layui-input-inline" style="width:5%">
+              <a class="layui-btn" lay-submit="" lay-filter="trail_query"><i class="layui-icon layui-icon-search" style="font-size: 12px"></i></a>
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label layui-bg-green">开始时间</label>
+            <div class="layui-input-inline" >
+              <input id="s_time"  type="text" name="s_time" lay-verify="required"  placeholder="开始时间" autocomplete="off" class="layui-input">
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label layui-bg-green">结束时间</label>
+            <div class="layui-input-inline" >
+              <input id="e_time" type="text" name="e_time" lay-verify="required"  placeholder="结束时间" autocomplete="off" class="layui-input">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="trail-analysis-panel">
+      </div>
+    </div>
+    
+    <div class="right-panel">
+      <div id="map_box"></div>
+      <div class="trail-play-panel" >
+          <div style="display: flex;">
+            <a class="layui-btn layui-bg-blue layui-btn-sm" onclick="control_func('run')" ><i class="fa fa-play" style="font-size: 12px"></i></a>
+            <a class="layui-btn layui-bg-blue layui-btn-sm" onclick="control_func('pause')" ><i class="fa fa-pause" style="font-size: 12px"></i></a>
+            <a class="layui-btn layui-bg-blue layui-btn-sm" onclick="control_func('stop')" ><i class="fa fa-stop" style="font-size: 12px"></i></a>
+            <a class="layui-btn layui-bg-blue layui-btn-sm" onclick="control_func('move_fast')" ><i class="layui-icon layui-icon-next" style="font-size: 12px"></i></a>
+            <a class="layui-btn layui-bg-blue layui-btn-sm" onclick="control_func('move_slow')" ><i class="layui-icon layui-icon-prev" style="font-size: 12px"></i></a>
+          </div>
+          <div class="layui-progress layui-progress-big" lay-showPercent="true" lay-filter="trail_slider" style="width:40%;margin-left:10px">
+            <div class="layui-progress-bar" lay-percent="0%"></div>
+          </div>
+          <div style="display: flex;margin-left: 10px;">
+             <input type="checkbox" title="地图跟随" class="map-follow-check" checked><p style="font-size: 15px;font-weight: bold;color: #1e9fff;">地图跟随</p>
+          </div>
+         
+        </div>
+      
+      
+        <!-- 轨迹信息面板 -->
+      <div id="trail_detail_panel" >
+        <div style="display: flex;justify-content: center;">
+          <div style="width: 5%;">序号</div>
+          <div style="width: 6%;">里程</div>
+          <div style="width: 6%;">速度</div>
+          <div style="width: 5%;">方向</div>
+          <div style="width: 28%;">位置</div>
+          <div style="width: 12%;">定位时间</div>
+          <div style="width: 12%;">接收时间</div>
+          <div style="width: 10%;">警报</div>
+          <div style="width: 16%;">参数</div>
+         
+        </div>
+        <div class="layui-col-md12" id="trail_detail_show" style="overflow:auto;margin-top: 5px;height: 90%;width: 100%;"></div>
+      </div>
+    </div>
+  </div>
+  
+
+  
+
+<script type="text/javascript" src="/static/js/base.js"></script>
+<script type="text/javascript" src="/static/js/bd_map.js"></script>
+<script src="static/layui-v2.8.17/layui/layui.js" charset="utf-8"></script>
+<script src="/static/js/pako.min.js"></script>
+
+<script type="text/javascript">
+
+  var $=layui.jquery;
+
+  var table=layui.table;
+  var layer=layui.layer;
+  var form=layui.form;
+  var laydate=layui.laydate;
+  var element=layui.element;
+
+  // 获取屏幕高度和宽度
+  var get_height=$(window).height()
+  var get_width=$(window).width()
+  var ajax_url = "trail"
+  var token = parent.token
+
+  // 界面样式
+  var base_height = parseInt(get_height-20).toString()+"px"
+  $(".left-panel").css("height",base_height)
+  $(".right-panel").css("height",base_height)
+  
+
+var car,car_obj={},car_name_obj={};
+var all_data;
+
+
+// 地图加载
+var map 
+var map_key = parent.map_key
+importBaiDuMapApi(map_key,"show_bdmap")
+var show_bdmap = function(){
+  map = create_map_ins("map_box") 
+}
+
+var map_follow = true
+form.on("checkbox(map_follow)",function(e){
+  map_follow = e.elem.checked
+})
+
+// 初始化
+var init_func = function(v){
+  console.log("trail",v)
+  car = v.car_catalog;
+  car.forEach(c=>{
+    car_obj[c.id] = c
+  })
+
+  oldk_datalist($("#car-select-list"),car,"car_id","id","name","选择车辆")
+  form.render()
+
+}
+// 数据初始化
+$(function(){
+  ajax_get_func(ajax_url,token,"get_init_data",init_func)
+})
+
+// 查询轨迹
+form.on('submit(trail_query)',function(obj){
+  
+  var v = obj.field
+  console.log("trail_query",v)
+  v.car_id = isNaN(parseInt(v.car_id)) == true?0:parseInt(v.car_id)
+  if(v.car_id == 0){
+    layer.msg("查询设备不存在")
+    return false
+  }
+
+  console.log("trail_query",v)
+  
+  ajax_post_func(ajax_url,token,"get_trail",JSON.stringify(v),function(d){
+    handle_trail(d.trail,d.car_dynamic)
+  })
+  return false
+
+});
+
+
+var trailobj;
+var handle_trail=function(info,carinfo){
+  // console.log("trailobj",info)
+  if(!info){
+    layer.msg("无数据")
+
+    return
+  }
+  // 调用函数解码
+  let trail_info = decodeGzipBase64(info);
+  console.log("trail_info",trail_info)
+  trailobj = new TrailObjBaiDuMap(map,trail_info,carinfo,$("#trail_detail_show"),$(".trail-analysis-panel"),"trail_slider")
+
+}
+
+var control_func=function(func){
+  if(!trailobj){
+    layer.msg('请先查询轨迹')
+    return
+  }
+  map.closeInfoWindow()
+  trailobj.controlButton(func)
+}
+
+
+laydate.render({
+  elem: '#s_time'
+  ,type: 'datetime'
+  ,value:new Date(new Date(new Date().toLocaleDateString()).getTime())
+  ,btns: ['clear','now', 'confirm']
+});
+
+laydate.render({
+  elem: '#e_time'
+  ,type: 'datetime'
+  ,value:new Date()
+  ,btns: ['clear','now', 'confirm']
+});
+
+</script>
+</body>
+</html>

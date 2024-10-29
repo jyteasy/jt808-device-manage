@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>communition</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="static/layui-v2.8.17/layui/css/layui.css" media="all">
+    <link rel="stylesheet" href="static/js/base.css" media="all">
+    <link rel="stylesheet" href="static/js/tree.css" media="all">
+    <link rel="stylesheet" href="static/js/dynamic.css" media="all">
+</head>
+
+<body>
+  <!-- 综合监控页面 -->
+  <div style="display: flex;">
+    <button style="position:absolute;left: 300px;top:50%;z-index:9" class="layui-btn"><i class="layui-icon layui-icon-close hover_gray panel-colse-icon" name="left-panel" ></i></button>
+    <div id="dynamic-left-panel" >
+    </div>
+    <div id="dynamic-map-panel">
+      <div >
+        <!-- <i class="layui-icon layui-icon-list hover_gray panel-open-icon" name="left-panel" style="width: 20px;height:20px;color: blue;"></i> -->
+        <!-- <i class="layui-icon layui-icon-dialogue hover_gray panel-open-icon" name="mid-panel" style="width: 20px;height:20px;color:green"></i> -->
+      </div>
+      <div id="map_box" style="width: 100%;height: 100%"></div>
+      <div id="tracking-terminal-panel" style="padding: 2px;border: 1px solid lightgray;border-radius: 5px;overflow: auto;">
+        
+      </div>
+    </div>
+  </div>
+  
+
+<script src="static/layui-v2.8.17/layui/layui.js" charset="utf-8"></script>
+<script type="text/javascript" src="/static/js/base.js"></script>
+<script type="text/javascript" src="/static/js/bd_map.js"></script>
+<script type="text/javascript" src="/static/js/tree.js"></script>
+
+<script type="text/javascript">
+
+  let $=layui.jquery;
+  let element = layui.element;
+  let table=layui.table;
+  let layer=layui.layer;
+  let form=layui.form;
+  let upload=layui.upload;
+  let laydate = layui.laydate
+  let get_height = parent.get_height-30
+  let get_width= parent.get_width
+  let token = parent.token
+  let ajax_url = "dynamic"
+
+
+  $(function(){
+    // 基本样式
+    base_style_func(get_height)
+    // 数据初始化
+    init_func()
+  })
+  
+  // 地图加载
+  var map 
+  var map_key = parent.map_key
+  importBaiDuMapApi(map_key,"show_bdmap")
+  var show_bdmap = function(){
+    map = create_map_ins("map_box") 
+  }
+
+  var car,car_obj = {},owner_to_car={};
+  var tree,alarm,company;
+  // 终端信息树
+  var treePanel = new tree_module($("#dynamic-left-panel"));
+  // 已选择的终端
+  var bdmap_marker_obj = {}
+
+  // 数据初始化
+  var init_end = false
+  var init_func = function(v){
+    tree = parent.tree
+    car = parent.car_dynamic
+    alarm = parent.alarm_on
+    user_self = parent.user_self
+    company = parent.company_select
+    car.forEach((item,i)=>{
+      // 定位设备详情
+      car_obj[item.id]=item
+    })
+    // 树初始化
+    treePanel.init({tree:tree,data:car,company:company,parent_click:parent_click_func,children_click:tree_chlidren_click})
+    init_end = true
+  }
+
+  // 父节点点击
+  var collection_point = {}
+  var parent_click_func = function(d,v,company_id){
+    // 批量打点
+    // console.log(d,v,company_id)
+    if (v == true){
+
+      if (d.length < 100){
+        for(var item of d){
+          children_click_func(item,v,"bat","bat")
+        }
+        return
+      }
+
+      let terlist=[]
+      for(var item of d){
+        switch(item.obj_kind){
+        case"user":
+          obj = user_obj[item.id]
+          if (obj.terminal_id == ""){
+            break
+          }
+          terlist.push(obj.terminal_id)
+          break
+        case"terminal":
+          terlist.push(item.id)
+          break
+        case"car":
+          if( item.device_id != ""){
+            terlist.push(item.id)
+          }
+          break
+
+        case"group":
+
+          obj = group_obj[item.id]
+          if (obj.member == ""){
+            break
+          }
+          var member = copy_func(obj.member)
+          var member = JSON.parse(member)
+          for (var i=0;i<member.length;i++){
+            var m = member[i]
+            if(m.kind =="user"){
+              let u = user_obj[idx]
+              if(u.terminal_id == ""){
+                continue
+              }
+              terlist.push(u.terminal_id)
+            }else if(m.kind =="terminal"){
+              terlist.push(m.id)
+            }
+
+          }
+         
+          break
+
+        }
+      }
+      let detaillist=[]
+      for(t of terlist){
+        if(!car_obj[t]){
+          ajax_get_func(ajax_url,token,"get_one_car&car_id="+t,function(car){
+            detaillist.push(car)
+            car_obj[car.id] = car
+          })
+        }else{
+          detaillist.push(car_obj[t])
+        }
+      }
+      collection_point[company_id] = packageBMapPoints(detaillist)
+
+      // 点聚合
+      var markerClusterer = new BMapLib.MarkerClusterer(map, {markers:collection_point[company_id]});
+      collection_point["Clusterer_"+company_id] = markerClusterer
+    }else{
+      if(collection_point[company_id]){
+        collection_point[company_id].forEach(m=>{
+          bdmap_marker_obj = remove_marker_bdmap(map,m.self_detail.device_id,bdmap_marker_obj)
+        })
+        collection_point[company_id] = null
+        collection_point["Clusterer_"+company_id].clearMarkers()
+      }
+      if (d.length < 100){
+        for(var item of d){
+          children_click_func(item,v,"bat","bat")
+        }
+      }
+      for(var k in tracking_terminal_arry){
+        var dom = "#children_car_"+tracking_terminal_arry[k].id.toString()
+        // console.log("dom,$(dom)",dom,$(dom))
+        $(dom)[0].children[0].checked = true
+      }
+      
+    }
+
+  }
+  var packageBMapPoints = function(data){
+    var pts = copy_func(data)
+    let markers=[],points=[];
+    for(var i=0;i<pts.length;i++){
+      let mk = add_device_marker_bdmap(map,pts[i])
+      if(bdmap_marker_obj[pts[i].device_id]){
+        continue
+      }
+      markers.push(mk)
+      points.push(mk.point)
+      bdmap_marker_obj[pts[i].device_id]=mk
+    };
+
+    map.setViewport(points)
+    return markers
+  }
+
+  // 子节点点击
+  var tree_chlidren_click = function(terminal_detail,checked){
+    if (!terminal_detail){
+      return
+    }
+    let handle_kind = "add" 
+    if(checked){
+      bdmap_marker_obj = add_marker_bdmap(map,terminal_detail,bdmap_marker_obj)
+      
+    }else{
+      handle_kind = "cancel"
+      bdmap_marker_obj = remove_marker_bdmap(map,terminal_detail.device_id,bdmap_marker_obj)
+      
+    }
+    // 订阅追踪功能
+    if(parent.wsconn){
+      let data={kind:"track",handle_kind:handle_kind,user:parent.user_selfphone,device_id:terminal_detail.device_id}
+      parent.wsconn.send(JSON.stringify(data))
+    }
+  }
+
+  // 追踪刷新
+  var ws_refresh_car = function(kind,data){
+    console.log("ws_refresh_car",data)
+    treePanel.update(data)
+    car.forEach((item,i)=>{
+      if(item.id == data.id){
+        car[i] = data
+      }
+    })
+
+    var m=bdmap_marker_obj[data.device_id]
+    // console.log('refresh_page',m)
+    if(m){
+      refresh_marker_bdmap(map,m,data)
+      // console.log("tracking-terminal,i,t",$(".tracking-terminal[name='"+c.device_id+"'] .tracking-terminal-item"))
+      let p = get_terminal_param(data)
+      let param = Object.assign(p,data,data.dev)
+      param.status = "<div>"+p.online+" "+p.alarm_icon+" "+p.track+"</div>"
+      $(".tracking-terminal[name='"+data.device_id+"'] .refresh-item").each(function(i,t){
+        let name = $(t).attr("name")
+        if(name){
+          $(t).html(param[name])
+        }
+      })
+      $(".refresh-item").css("font-size",parseInt(get_height/70).toString()+"px")
+    }
+  }
+
+
+
+  var base_style_func = function(get_height){
+      // 界面样式
+    var base_height = parseInt(get_height-parent.nav_h).toFixed()+"px"
+
+    $("#dynamic-left-panel").css("height",base_height)
+    $("#dynamic-map-panel").css("height",base_height)
+
+    let tracking_terminal_panel = parseInt((get_height-20)/3.5)+"px"
+    $("#tracking-terminal-panel").css("height",tracking_terminal_panel)
+
+    var panel_show_status = {"left-panel":true,"mid-panel":true}
+
+    $(".panel-colse-icon").on("click",function(e){
+      var name = $(this).attr("name")
+      
+      if($("."+name).is(":visible")){
+        $("."+name).hide()
+        var close_flex = $("."+name).css("flex").split(" ")[0]
+        close_flex = close_flex == null?0:parseInt(close_flex)
+        var map_flex = $("#dynamic-map-panel").css("flex").split(" ")[0]
+        map_flex = map_flex == null?0:parseInt(map_flex)
+        panel_show_status[name] = false
+        $("#dynamic-map-panel").css("flex",(map_flex+close_flex).toString())
+      }
+
+    })
+
+    $(".panel-open-icon").on("click",function(e){
+      var name = $(this).attr("name")
+      if(!$("."+name).is(":visible")){
+
+        $("."+name).show()
+        var close_flex = $("."+name).css("flex").split(" ")[0]
+        close_flex = close_flex == null?0:parseInt(close_flex)
+        var map_flex = $("#dynamic-map-panel").css("flex").split(" ")[0]
+        map_flex = map_flex == null?0:parseInt(map_flex)
+        panel_show_status[name] = true
+        $("#dynamic-map-panel").css("flex",(map_flex-close_flex).toString())
+      }
+
+    })
+  }
+
+
+</script>
+</body>
+</html>
